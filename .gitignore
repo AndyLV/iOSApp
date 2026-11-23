@@ -1,0 +1,6 @@
+build/
+artifacts/
+*.xcarchive
+xcuserdata/
+DerivedData/
+.DS_Store

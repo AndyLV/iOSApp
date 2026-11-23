@@ -1,0 +1,42 @@
+name: test_app
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    # "26.0" instead of "27.0": this keeps the project buildable even if a
+    # CI runner ships an older SDK before iOS 27 SDKs are widespread.
+    # The app targets iOS 27 devices; raise this to "27.0" at any time.
+    iOS: "26.0"
+  createIntermediateGroups: false
+
+targets:
+  test_app:
+    type: application
+    platform: iOS
+    sources:
+      - App
+    resources:
+      - path: App/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.testapp
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        PRODUCT_NAME: test_app
+
+schemes:
+  test_app:
+    build:
+      targets:
+        test_app: all
+    run:
+      targets:
+        - test_app
+    archive:
+      targets:
+        - test_app

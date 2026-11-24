@@ -13,10 +13,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Xcode
+      - name: Show Xcode version
         run: |
-          # Use the newest Xcode bundled with the runner image (ships the
-          # latest iOS SDK). If a specific version is required later, pin it here.
+          xcodebuild -version
           ls /Applications | grep -i xcode
 
       - name: Install xcodegen
@@ -37,40 +36,11 @@ jobs:
             -archivePath build/test_app \
             | xcbeautify --quiet
 
-      - name: Export unsigned IPA
+      - name: Package unsigned IPA
         run: |
-          export_options=$(mktemp -d)/ExportOptions.plist
-          cat > "$export_options" <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>method</key>
-  <string>enterprise</string>
-  <key>compileBitcode</key>
-  <false/>
-</dict>
-</plist>
-EOF
-          xcodebuild \
-            -exportArchive \
-            -archivePath build/test_app.xcarchive \
-            -optionsPlist "$export_options" \
-            -exportPath build/export \
-            | xcbeautify --quiet \
-            || true
-
-      - name: Collect artifacts
-        run: |
-          mkdir -p artifacts
-          if [ -f build/export/test_app.ipa ]; then
-            mv build/export/test_app.ipa artifacts/test_app.ipa
-          else
-            # Fallback: repackage the .app binary directly
-            mkdir -p artifacts/Payload
-            cp -R build/test_app.xcarchive/Products/Applications/test_app.app artifacts/Payload/
-            (cd artifacts && zip -qr test_app.ipa Payload)
-          fi
+          mkdir -p artifacts/Payload
+          cp -R build/test_app.xcarchive/Products/Applications/test_app.app artifacts/Payload/
+          (cd artifacts && zip -qr test_app.ipa Payload)
           ls -lh artifacts
 
       - name: Upload IPA

@@ -16,7 +16,7 @@ import Combine
 /// scanning once; its identifier is remembered (UserDefaults) and reused on
 /// every later send.
 @MainActor
-final class SketcherService: NSObject, ObservableObject, CBCentralManagerDelegate {
+final class SketcherService: NSObject, ObservableObject {
     // MARK: Protocol constants
     private let charUUID = CBUUID(string: "0000FFE3-0000-1000-8000-00805F9B34FB")
     private let sendCommand: [UInt8] = [0x01, 0x00, 0x00, 0x00, 0x50, 0x00, 0x01, 0x00]
@@ -262,7 +262,7 @@ final class SketcherService: NSObject, ObservableObject, CBCentralManagerDelegat
         let data = Data(bytes: bytes)
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             self.writeContinuation = cont
-            central.writeValue(data, for: characteristic, on: peripheral, type: .withResponse)
+            peripheral.writeValue(data, for: characteristic, type: .withResponse)
             // Safety net: if the device never acknowledges the write, fail the
             // send instead of hanging forever.
             Task { @MainActor in
@@ -403,23 +403,6 @@ extension SketcherService: CBCentralManagerDelegate {
         }
     }
 
-    nonisolated func centralManager(
-        _ central: CBCentralManager,
-        didWrite value: Data,
-        for characteristic: CBCharacteristic,
-        error: Error?
-    ) {
-        Task { @MainActor in
-            if let cont = self.writeContinuation {
-                self.writeContinuation = nil
-                if let error = error {
-                    cont.resume(throwing: SketcherError.writeFailed(error.localizedDescription))
-                } else {
-                    cont.resume()
-                }
-            }
-        }
-    }
 }
 
 // MARK: - CBPeripheralDelegate
@@ -458,6 +441,23 @@ extension SketcherService: CBPeripheralDelegate {
             if let cont = self.notifyContinuation {
                 self.notifyContinuation = nil
                 cont.resume()
+            }
+        }
+    }
+
+    nonisolated func peripheral(
+        _ peripheral: CBPeripheral,
+        didWriteValueFor characteristic: CBCharacteristic,
+        error: Error?
+    ) {
+        Task { @MainActor in
+            if let cont = self.writeContinuation {
+                self.writeContinuation = nil
+                if let error = error {
+                    cont.resume(throwing: SketcherError.writeFailed(error.localizedDescription))
+                } else {
+                    cont.resume()
+                }
             }
         }
     }

@@ -60,8 +60,21 @@ project.yml               Xcode project spec (generated via xcodegen)
 .github/workflows/build.yml  free CI: builds the unsigned IPA
 ```
 
-## Adding BLE later
+## BLE: sending images to the smART Sketcher
 
-`BluetoothManager` is already a CoreBluetooth `CBCentralManager` wrapper
-with permission configured. Add UI that uses it (scan, connect to a
-peripheral, read/write characteristics) — no project changes needed.
+The app can send the selected image to a smART Sketcher 2.0 display over
+BLE (protocol ported from `smart-sketcher-tools-main/sketcher.py`):
+
+- Tap **Scan for Sketcher Device** once, pick your device from the list —
+  it is then *remembered* (by iOS identifier, since iOS forbids hard-coded
+  MAC addresses) and connected directly on every later send.
+- **Send to Sketcher** stretches the photo to 160x128, converts it to
+  RGB565 and streams 128 lines with the original 0.15 s line delay,
+  updating a progress bar (`Line n / 128`) the whole time.
+
+`App/SketcherService.swift` holds the whole CoreBluetooth logic;
+`NSBluetoothAlwaysUsageDescription` is set in `Info.plist`.
+
+To change the line delay, look for `delay_between_image_lines` in the
+Python script and adjust the constant `lineDelay` (in nanoseconds) in
+`SketcherService`.

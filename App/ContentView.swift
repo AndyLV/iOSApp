@@ -149,10 +149,10 @@ struct ContentView: View {
                 }
             } label: {
                 Group {
-                    if sketcher.status == .sending {
+                    if sketcher.isBusy {
                         HStack {
                             ProgressView()
-                            Text("Sending...")
+                            Text(sketcher.step)
                         }
                         .frame(maxWidth: .infinity)
                     } else {
@@ -168,12 +168,21 @@ struct ContentView: View {
             if sketcher.status == .sending {
                 VStack(alignment: .leading, spacing: 6) {
                     ProgressView(value: sketcher.progress)
-                    Text("Line \(Int((sketcher.progress * 128).rounded())) / 128 — about 20 seconds total")
+                    Text(statusLine)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
         }
+    }
+
+    private var statusLine: String {
+        let line = Int((sketcher.progress * 128).rounded())
+        var text = "Line \(line) / 128"
+        if sketcher.notifications > 0 {
+            text += " • device \"ok\"s received: \(sketcher.notifications)"
+        }
+        return text
     }
 
     private var canSend: Bool {

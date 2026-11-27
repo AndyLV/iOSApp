@@ -627,7 +627,7 @@ extension SketcherService: CBPeripheralDelegate {
 private extension Data {
     /// Splits the data into chunks of at most `size` bytes.
     func chunked(size: Int) -> [Data] {
-        let size = max(size, 1)
+        let size = Swift.max(size, 1)
         guard count > size else { return [self] }
         var chunks: [Data] = []
         var start = startIndex

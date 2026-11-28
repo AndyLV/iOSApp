@@ -327,11 +327,21 @@ final class SketcherService: NSObject, ObservableObject {
         expectedCharDiscovers = services.count
         receivedCharDiscovers = 0
         allCharacteristics = []
-        try await withPhase("reading the device's characteristics", in: 15) { phase in
-            self.charsPhase = phase
-            for service in services {
-                peripheral.discoverCharacteristics(nil, for: service)
+        do {
+            try await withPhase("reading the device's characteristics", in: 20) { phase in
+                self.charsPhase = phase
+                for service in services {
+                    peripheral.discoverCharacteristics(nil, for: service)
+                }
             }
+        } catch {
+            // Custom BLE stacks are not required to answer characteristic
+            // discovery on every service — surface what iOS actually saw.
+            let seenServices = services.map { $0.uuid.uuidString.lowercased() }
+            let seenChars = allCharacteristics.map { $0.uuid.uuidString.lowercased() }
+            throw SketcherError.phaseTimedOut(
+                "reading the device's characteristics (services: \(seenServices.joined(separator: ", ")); characteristics seen: \(seenChars.joined(separator: ", ")))"
+            )
         }
 
         guard let characteristic = allCharacteristics.first(where: { $0.uuid == charUUID }),
@@ -568,10 +578,15 @@ extension SketcherService: CBPeripheralDelegate {
         Task { @MainActor in
             self.allCharacteristics.append(contentsOf: characteristics)
             self.receivedCharDiscovers += 1
-            if self.receivedCharDiscovers >= self.expectedCharDiscovers,
-               let phase = self.charsPhase {
-                self.charsPhase = nil
-                phase.finish(())
+            // Some devices never answer characteristic discovery for every
+            // service. We only need 0xFFE3, so complete as soon as it shows
+            // up (or, alternatively, when everything has answered).
+            let found = self.allCharacteristics.contains { $0.uuid == self.charUUID }
+            if found || self.receivedCharDiscovers >= self.expectedCharDiscovers {
+                if let phase = self.charsPhase {
+                    self.charsPhase = nil
+                    phase.finish(())
+                }
             }
         }
     }
